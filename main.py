@@ -17,10 +17,12 @@ def webhook():
     print("📡 Headers:", headers)
     print("🌍 IP Address:", ip)
 
+    # Secret check
     if data.get("secret") != "rahul123":
-        print("❌ Unauthorized: Invalid secret")
+        print(f"❌ Unauthorized: Invalid secret '{data.get('secret')}'")
         return jsonify({"status": "unauthorized"}), 403
 
+    # Extract required fields
     side = data.get("side")
     quantity = data.get("quantity")
     order_type = data.get("type")
