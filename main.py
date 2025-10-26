@@ -5,6 +5,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
+    print("✅ Your trading bot is live and listening!")
     return "✅ Your trading bot is live and listening!"
 
 @app.route('/webhook', methods=['POST'])
@@ -56,4 +57,5 @@ def place_order(side, quantity, order_type):
         print("❌ Order failed:", str(e))
 
 if __name__ == '__main__':
+    print("🚀 Starting trading bot on port 10000...")
     app.run(host='0.0.0.0', port=10000)
