@@ -1,13 +1,12 @@
 from flask import Flask, request, jsonify
+import requests
 
 app = Flask(__name__)
 
-# Health check route
 @app.route('/')
 def home():
-    return "✅ Your service is live 🎉"
+    return "✅ Your trading bot is live and listening!"
 
-# Webhook route for TradingView alerts
 @app.route('/webhook', methods=['POST'])
 def webhook():
     data = request.get_json()
@@ -18,21 +17,41 @@ def webhook():
     print("📡 Headers:", headers)
     print("🌍 IP Address:", ip)
 
-    # Optional: Secret key check (add to your TradingView alert JSON)
     if data.get("secret") != "rahul123":
-        print("❌ Invalid source: missing or wrong secret")
+        print("❌ Unauthorized: Invalid secret")
         return jsonify({"status": "unauthorized"}), 403
 
-    # Extract trade details
-    symbol = data.get("symbol")
     side = data.get("side")
     quantity = data.get("quantity")
     order_type = data.get("type")
 
-    print(f"📈 Trade Signal → {side.upper()} {quantity} {symbol} as {order_type.upper()}")
+    if not all([side, quantity, order_type]):
+        print("❌ Missing required fields in payload")
+        return jsonify({"status": "bad request"}), 400
+
+    print(f"📈 Executing {side.upper()} order for BTCUSDT: {quantity} units as {order_type.upper()}")
+    place_order(side, quantity, order_type)
 
     return jsonify({"status": "success"}), 200
 
-# Run the app
+def place_order(side, quantity, order_type):
+    url = "https://api.delta.exchange/v2/orders"
+    headers = {
+        "api-key": "Q9i261PfPdoY8hEBa5uxcjRTebWYsZ",  # ✅ Your live trading key
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "product_id": 24,  # BTCUSDT perpetual
+        "size": quantity,
+        "side": side,
+        "order_type": order_type
+    }
+
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        print("📤 Order response:", response.json())
+    except Exception as e:
+        print("❌ Order failed:", str(e))
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
