@@ -41,7 +41,7 @@ def webhook():
 def place_order(side, quantity, order_type):
     url = "https://api.delta.exchange/v2/orders"
     headers = {
-        "api-key": "Q9i261PfPdoY8hEBa5uxcjRTebWYsZ",  # ✅ Your live trading key
+        "api-key": "vSMdxAEBS7PwucaZYoINMJAEc8ePVC",  # ✅ Your live trading key
         "Content-Type": "application/json"
     }
     payload = {
