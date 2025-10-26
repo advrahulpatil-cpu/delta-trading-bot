@@ -1,44 +1,26 @@
-from flask import Flask, request
-import requests
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-API_KEY = "your_api_key_here"
-API_SECRET = "your_api_secret_here"
-TRADE_SIZE = 50
-BASE_URL = "https://api.delta.exchange"
+@app.route('/')
+def home():
+    return "✅ Bot is live"
 
-def place_order(symbol, side):
-    url = f"{BASE_URL}/v2/orders"
-    headers = {
-        "api-key": API_KEY,
-        "api-secret": API_SECRET,
-        "Content-Type": "application/json"
-    }
-    data = {
-        "product_id": symbol,
-        "size": TRADE_SIZE,
-        "side": side,
-        "order_type": "market"
-    }
-    response = requests.post(url, json=data, headers=headers)
-    print(f"Order response: {response.text}")
-    return response.json()
-
-@app.route("/webhook", methods=["POST"])
+@app.route('/webhook', methods=['POST'])
 def webhook():
-    data = request.json
-    print(f"Received alert: {data}")
-    message = data.get("message", "").lower()
-    if "long" in message:
-        place_order(symbol=extract_symbol(message), side="buy")
-    elif "short" in message:
-        place_order(symbol=extract_symbol(message), side="sell")
-    return "OK", 200
+    data = request.get_json()
+    print("✅ Received webhook:", data)
 
-def extract_symbol(message):
-    coin = message.split()[0].upper()
-    return f"{coin}USDT"
+    # Example logic: extract and print trade details
+    symbol = data.get("symbol")
+    side = data.get("side")
+    quantity = data.get("quantity")
+    order_type = data.get("type")
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    print(f"📈 Trade Signal → {side.upper()} {quantity} {symbol} as {order_type.upper()}")
+
+    # Respond to TradingView
+    return jsonify({"status": "success"}), 200
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
