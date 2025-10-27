@@ -11,6 +11,12 @@ API_SECRET = "your_delta_api_secret"
 BASE_URL = "https://api.delta.exchange"
 WEBHOOK_SECRET = "rahul123"
 
+# ✅ Symbol-to-product_id mapping
+symbol_to_product_id = {
+    "BTCUSDT": 27,
+    "ETHUSDT": 28
+}
+
 @app.get("/")
 def root():
     return {"status": "ok"}
@@ -31,7 +37,8 @@ async def webhook(request: Request):
     side = payload.get("side")
     quantity = payload.get("quantity")
     order_type = payload.get("type")
-    symbol = "BTCUSDT"
+    symbol = payload.get("symbol", "BTCUSDT")
+    product_id = symbol_to_product_id.get(symbol, 27)
 
     path = "/v2/orders/create"
     url = BASE_URL + path
@@ -39,7 +46,7 @@ async def webhook(request: Request):
         "order_type": order_type,
         "size": quantity,
         "side": side,
-        "product_id": 1  # Replace with actual product ID
+        "product_id": product_id
     }
     body_str = str(body).replace("'", '"')
     signature = generate_signature(API_SECRET, "POST", path, body_str)
