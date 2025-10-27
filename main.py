@@ -50,8 +50,8 @@ async def webhook_listener(request: Request):
         "reduce_only": payload["reduce_only"]
     }
 
-    response = requests.post(f"{BASE_URL}/orders", json=order_data, headers=headers)
+    response = requests.post(f"{BASE_URL}/v2/orders", json=order_data, headers=headers)
     print("Received webhook:", payload)
     print("Order response:", response.status_code, response.text)
 
-    return {"status": "order sent", "response": response.json()}
+    return {"status": "order sent", "response": response.text}
