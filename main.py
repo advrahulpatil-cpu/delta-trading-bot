@@ -11,6 +11,10 @@ API_SECRET = "your_delta_api_secret"
 BASE_URL = "https://api.delta.exchange"
 WEBHOOK_SECRET = "rahul123"
 
+@app.get("/")
+def root():
+    return {"status": "ok"}
+
 def generate_signature(api_secret, method, path, body):
     message = method + path + body
     return hmac.new(api_secret.encode(), message.encode(), hashlib.sha256).hexdigest()
