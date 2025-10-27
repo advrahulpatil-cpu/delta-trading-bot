@@ -8,6 +8,7 @@ app = FastAPI()
 
 API_KEY = "ZLG71WhzFyT1mPs8UWoMHGLAeX3WjL"
 API_SECRET = "cIcjQ6tWsdia6LkluCpZBkJZw9z5zvhTzGq5Kmeh5X2IZnCqtPypafeAAzVC"
+BASE_URL = "https://api.delta.exchange"
 
 @app.get("/")
 def root():
@@ -33,8 +34,24 @@ async def webhook_listener(request: Request):
         hashlib.sha256
     ).hexdigest()
 
-    # Example order execution logic (replace with your actual flow)
-    print("Received webhook:", payload)
-    print("Generated signature:", signature)
+    headers = {
+        "api-key": API_KEY,
+        "timestamp": timestamp,
+        "signature": signature,
+        "Content-Type": "application/json"
+    }
 
-    return {"status": "webhook received"}
+    order_data = {
+        "symbol": payload["symbol"],
+        "side": payload["side"],
+        "order_type": payload["type"],
+        "size": payload["quantity"],
+        "position_side": payload["position_side"],
+        "reduce_only": payload["reduce_only"]
+    }
+
+    response = requests.post(f"{BASE_URL}/orders", json=order_data, headers=headers)
+    print("Received webhook:", payload)
+    print("Order response:", response.status_code, response.text)
+
+    return {"status": "order sent", "response": response.json()}
