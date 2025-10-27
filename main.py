@@ -6,8 +6,8 @@ import requests
 
 app = FastAPI()
 
-API_KEY = "your_new_api_key"
-API_SECRET = "your_new_api_secret"
+API_KEY = "ZLG71WhzFyT1mPs8UWoMHGLAeX3WjL"
+API_SECRET = "cIcjQ6tWsdia6LkluCpZBkJZw9z5zvhTzGq5Kmeh5X2IZnCqtPypafeAAzVC"
 
 @app.get("/")
 def root():
