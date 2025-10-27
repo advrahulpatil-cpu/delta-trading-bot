@@ -1,67 +1,40 @@
 from fastapi import FastAPI, Request
-import uvicorn
 import hmac
 import hashlib
+import time
 import requests
 
 app = FastAPI()
 
-API_KEY = "your_delta_api_key"
-API_SECRET = "your_delta_api_secret"
-BASE_URL = "https://api.delta.exchange"
-WEBHOOK_SECRET = "rahul123"
-
-# ✅ Symbol-to-product_id mapping
-symbol_to_product_id = {
-    "BTCUSDT": 27,
-    "ETHUSDT": 28
-}
+API_KEY = "your_new_api_key"
+API_SECRET = "your_new_api_secret"
 
 @app.get("/")
 def root():
-    return {"status": "ok"}
+    return {"status": "lyra-delta-relay is live"}
 
-def generate_signature(api_secret, method, path, body):
-    message = method + path + body
-    return hmac.new(api_secret.encode(), message.encode(), hashlib.sha256).hexdigest()
+@app.get("/healthz")
+def health_check():
+    return {"status": "healthy"}
+
+@app.get("/my-ip")
+def get_ip():
+    ip = requests.get("https://api64.ipify.org").text
+    return {"outbound_ip": ip}
 
 @app.post("/webhook")
-async def webhook(request: Request):
+async def webhook_listener(request: Request):
     payload = await request.json()
-    print(f"✅ Received webhook: {payload}")
-    print(f"📡 Headers: {dict(request.headers)}")
+    timestamp = str(int(time.time() * 1000))
+    signature_payload = timestamp + API_KEY
+    signature = hmac.new(
+        API_SECRET.encode("utf-8"),
+        signature_payload.encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()
 
-    if payload.get("secret") != WEBHOOK_SECRET:
-        return {"error": "Unauthorized"}
+    # Example order execution logic (replace with your actual flow)
+    print("Received webhook:", payload)
+    print("Generated signature:", signature)
 
-    side = payload.get("side")
-    quantity = payload.get("quantity")
-    order_type = payload.get("type")
-    symbol = payload.get("symbol", "BTCUSDT")
-    product_id = symbol_to_product_id.get(symbol, 27)
-
-    path = "/v2/orders/create"
-    url = BASE_URL + path
-    body = {
-        "order_type": order_type,
-        "size": quantity,
-        "side": side,
-        "product_id": product_id
-    }
-    body_str = str(body).replace("'", '"')
-    signature = generate_signature(API_SECRET, "POST", path, body_str)
-
-    headers = {
-        "api-key": API_KEY,
-        "signature": signature,
-        "Content-Type": "application/json"
-    }
-
-    print(f"📈 Executing {side.upper()} order for {symbol}: {quantity} units as {order_type.upper()}")
-    response = requests.post(url, headers=headers, json=body)
-    print(f"📤 Order response: {response.json()}")
-
-    return {"status": "ok"}
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=10000)
+    return {"status": "webhook received"}
