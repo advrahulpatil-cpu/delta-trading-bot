@@ -1,89 +1,56 @@
-from flask import Flask, request, jsonify
-import requests
-import time
+from fastapi import FastAPI, Request
+import uvicorn
 import hmac
 import hashlib
-import json
-import sys
+import requests
 
-app = Flask(__name__)
+app = FastAPI()
 
-@app.route('/')
-def home():
-    print("✅ Your trading bot is live and listening!", flush=True)
-    return "✅ Your trading bot is live and listening!"
+API_KEY = "your_delta_api_key"
+API_SECRET = "your_delta_api_secret"
+BASE_URL = "https://api.delta.exchange"
+WEBHOOK_SECRET = "rahul123"
 
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    data = request.get_json()
-    headers = dict(request.headers)
-    ip = request.remote_addr
+def generate_signature(api_secret, method, path, body):
+    message = method + path + body
+    return hmac.new(api_secret.encode(), message.encode(), hashlib.sha256).hexdigest()
 
-    print("✅ Received webhook:", data, flush=True)
-    print("📡 Headers:", headers, flush=True)
-    print("🌍 IP Address:", ip, flush=True)
+@app.post("/webhook")
+async def webhook(request: Request):
+    payload = await request.json()
+    print(f"✅ Received webhook: {payload}")
+    print(f"📡 Headers: {dict(request.headers)}")
 
-    if data.get("secret") != "rahul123":
-        print(f"❌ Unauthorized: Invalid secret '{data.get('secret')}'", flush=True)
-        return jsonify({"status": "unauthorized"}), 403
+    if payload.get("secret") != WEBHOOK_SECRET:
+        return {"error": "Unauthorized"}
 
-    side = data.get("side")
-    quantity = data.get("quantity")
-    order_type = data.get("type")
+    side = payload.get("side")
+    quantity = payload.get("quantity")
+    order_type = payload.get("type")
+    symbol = "BTCUSDT"
 
-    if not all([side, quantity, order_type]):
-        print("❌ Missing required fields in payload", flush=True)
-        return jsonify({"status": "bad request"}), 400
-
-    print(f"📈 Executing {side.upper()} order for BTCUSDT: {quantity} units as {order_type.upper()}", flush=True)
-    place_order(side, quantity, order_type)
-
-    return jsonify({"status": "success"}), 200
-
-def place_order(side, quantity, order_type):
-    url_path = "/v2/orders"
-    base_url = "https://api.india.delta.exchange"
-    full_url = base_url + url_path
-
-    api_key = "vSMdxAEBS7PwucaZYoINMJAEc8ePVC"
-    api_secret = "qdtMbQCuRZ5A7039NlmIYOnYxTauiUAqEwCTSjUnFJDN2bSoSWUOAHjGIdDe"
-    timestamp = str(int(time.time()))
-
-    if order_type == "market":
-        order_type = "market_order"
-    elif order_type == "limit":
-        order_type = "limit_order"
-
-    payload = {
-        "product_id": 27,
+    path = "/v2/orders/create"
+    url = BASE_URL + path
+    body = {
+        "order_type": order_type,
         "size": quantity,
         "side": side,
-        "order_type": order_type
+        "product_id": 1  # Replace with actual product ID
     }
-
-    body_str = json.dumps(payload, separators=(',', ':'))
-    signature_payload = f"POST{timestamp}{url_path}{body_str}"
-    signature = hmac.new(
-        api_secret.encode(),
-        signature_payload.encode(),
-        hashlib.sha256
-    ).hexdigest()
+    body_str = str(body).replace("'", '"')
+    signature = generate_signature(API_SECRET, "POST", path, body_str)
 
     headers = {
-        "api-key": api_key,
-        "timestamp": timestamp,
+        "api-key": API_KEY,
         "signature": signature,
-        "User-Agent": "RahulBot",
         "Content-Type": "application/json"
     }
 
-    try:
-        response = requests.post(full_url, json=payload, headers=headers)
-        print("📤 Order response:", response.json(), flush=True)
-    except Exception as e:
-        print("❌ Order failed:", str(e), flush=True)
+    print(f"📈 Executing {side.upper()} order for {symbol}: {quantity} units as {order_type.upper()}")
+    response = requests.post(url, headers=headers, json=body)
+    print(f"📤 Order response: {response.json()}")
 
-if __name__ == '__main__':
-    print("🚀 Starting trading bot on port 10000...", flush=True)
-    sys.stdout.flush()
-    app.run(host='0.0.0.0', port=10000)
+    return {"status": "ok"}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=10000)
