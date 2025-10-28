@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# CORS setup (optional but recommended)
+# CORS setup
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -46,7 +46,15 @@ def place_order(order_data):
 
     url = BASE_URL + path
     response = requests.post(url, headers=headers, data=body)
-    return response.json()
+
+    try:
+        return response.json()
+    except requests.exceptions.JSONDecodeError:
+        return {
+            "error": "Empty or invalid response",
+            "status_code": response.status_code,
+            "text": response.text
+        }
 
 @app.post("/webhook")
 async def webhook_handler(request: Request):
