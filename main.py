@@ -3,6 +3,7 @@ import hmac
 import hashlib
 import requests
 import json
+import threading
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -62,7 +63,11 @@ async def root():
 
 @app.post("/webhook")
 async def webhook_handler(request: Request):
-    payload = await request.json()
+    try:
+        payload = await request.json()
+    except Exception as e:
+        return {"error": "Invalid JSON payload", "details": str(e)}
+
     print(f"Received webhook: {payload}")
 
     if payload.get("secret") != "rahul123":
@@ -80,3 +85,14 @@ async def webhook_handler(request: Request):
     result = place_order(order_payload)
     print(f"Order response: {result}")
     return result
+
+# Keep-alive thread to prevent Render idle shutdown
+def keep_alive():
+    while True:
+        try:
+            requests.get("https://lyra-delta-relay.onrender.com/")
+        except:
+            pass
+        time.sleep(240)
+
+threading.Thread(target=keep_alive, daemon=True).start()
