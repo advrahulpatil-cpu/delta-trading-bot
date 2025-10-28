@@ -56,6 +56,10 @@ def place_order(order_data):
             "text": response.text
         }
 
+@app.get("/")
+async def root():
+    return {"status": "lyra-delta-relay is live and listening on /webhook"}
+
 @app.post("/webhook")
 async def webhook_handler(request: Request):
     payload = await request.json()
