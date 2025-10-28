@@ -1,38 +1,41 @@
-from fastapi import FastAPI, Request
+import time
 import hmac
 import hashlib
-import time
 import requests
+import json
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-API_KEY = "ZLG71WhzFyT1mPs8UWoMHGLAeX3WjL"
-API_SECRET = "cIcjQ6tWsdia6LkluCpZBkJZw9z5zvhTzGq5Kmeh5X2IZnCqtPypafeAAzVC"
+# CORS setup (optional but recommended)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Replace with your actual credentials
+API_KEY = "your_api_key"
+API_SECRET = "your_api_secret"
 BASE_URL = "https://api.delta.exchange"
 
-@app.get("/")
-def root():
-    return {"status": "lyra-delta-relay is live"}
-
-@app.get("/healthz")
-def health_check():
-    return {"status": "healthy"}
-
-@app.get("/my-ip")
-def get_ip():
-    ip = requests.get("https://api64.ipify.org").text
-    return {"outbound_ip": ip}
-
-@app.post("/webhook")
-async def webhook_listener(request: Request):
-    payload = await request.json()
-    timestamp = str(int(time.time() * 1000))
-    signature_payload = timestamp + API_KEY
+def generate_signature(api_secret, method, path, body):
+    timestamp = str(int(time.time()))
+    message = timestamp + method + path + (body or "")
     signature = hmac.new(
-        API_SECRET.encode("utf-8"),
-        signature_payload.encode("utf-8"),
+        api_secret.encode("utf-8"),
+        message.encode("utf-8"),
         hashlib.sha256
     ).hexdigest()
+    return signature, timestamp
+
+def place_order(order_data):
+    path = "/v2/orders/create"
+    method = "POST"
+    body = json.dumps(order_data)
+    signature, timestamp = generate_signature(API_SECRET, method, path, body)
 
     headers = {
         "api-key": API_KEY,
@@ -41,7 +44,19 @@ async def webhook_listener(request: Request):
         "Content-Type": "application/json"
     }
 
-    order_data = {
+    url = BASE_URL + path
+    response = requests.post(url, headers=headers, data=body)
+    return response.json()
+
+@app.post("/webhook")
+async def webhook_handler(request: Request):
+    payload = await request.json()
+    print(f"Received webhook: {payload}")
+
+    if payload.get("secret") != "rahul123":
+        return {"error": "Invalid secret"}
+
+    order_payload = {
         "symbol": payload["symbol"],
         "side": payload["side"],
         "order_type": payload["type"],
@@ -50,8 +65,6 @@ async def webhook_listener(request: Request):
         "reduce_only": payload["reduce_only"]
     }
 
-    response = requests.post(f"{BASE_URL}/v2/orders", json=order_data, headers=headers)
-    print("Received webhook:", payload)
-    print("Order response:", response.status_code, response.text)
-
-    return {"status": "order sent", "response": response.text}
+    result = place_order(order_payload)
+    print(f"Order response: {result}")
+    return result
