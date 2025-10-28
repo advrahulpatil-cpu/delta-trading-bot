@@ -95,4 +95,5 @@ def keep_alive():
             pass
         time.sleep(240)
 
-threading.Thread(target=keep_alive, daemon=True).start()
+if __name__ == "__main__":
+    threading.Thread(target=keep_alive, daemon=True).start()
